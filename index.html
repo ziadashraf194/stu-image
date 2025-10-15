@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ar">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>عرض صور الطلاب</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #f2f2f2;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            direction: rtl;
+        }
+
+        h2 {
+            background: #004080;
+            color: white;
+            margin: 0;
+            padding: 15px;
+        }
+
+        .search-box,
+        .range-box {
+            margin: 15px;
+        }
+
+        input[type="number"],
+        input[type="text"] {
+            padding: 10px;
+            width: 180px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            margin: 5px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #004080;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background: #0066cc;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
+            padding: 15px;
+        }
+
+        img {
+            width: 140px;
+            height: 190px;
+            object-fit: cover;
+            border: 2px solid #333;
+            border-radius: 10px;
+            background: white;
+            padding: 5px;
+            transition: transform 0.2s ease;
+        }
+
+        img:hover {
+            transform: scale(1.05);
+        }
+
+        #loadingText {
+            color: #666;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>📸 عرض صور الطلاب</h2>
+
+    <div class="range-box">
+        <label>من رقم:</label>
+        <input type="number" id="startInput" placeholder="مثلاً 100">
+        <label>إلى رقم:</label>
+        <input type="number" id="endInput" placeholder="مثلاً 500">
+        <button id="loadBtn">عرض الصور</button>
+    </div>
+
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="🔍 ابحث برقم الطالب...">
+    </div>
+
+    <div class="container" id="imagesContainer"></div>
+    <div id="loadingText"></div>
+
+    <script>
+        const container = document.getElementById('imagesContainer');
+        const loadingText = document.getElementById('loadingText');
+        const searchInput = document.getElementById('searchInput');
+        const loadBtn = document.getElementById('loadBtn');
+        const startInput = document.getElementById('startInput');
+        const endInput = document.getElementById('endInput');
+
+        let currentCode = 0;
+        let endCode = 0;
+        let loading = false;
+        const allImages = [];
+        const failedImages = [];
+
+        async function loadBatch(startCode,endCode) {
+            if(loading) return;
+
+            loading = true;
+            container.innerHTML = "";
+            allImages.length = 0;
+            failedImages.length = 0;
+            loadingText.textContent = "⏳ جارٍ تحميل الصور...";
+
+            const fragment = document.createDocumentFragment();
+
+            for(let code = startCode; code <= endCode; code++) {
+                const img = document.createElement("img");
+                img.src = `https://credit.svnu.edu.eg/stuJCI?param0=stuImages.Images&param1=download&param2=${code}`;
+                img.alt = `Student ${code}`;
+                img.dataset.code = code;
+                img.onerror = () => {
+                    failedImages.push(code);
+                    img.remove();
+                };
+                allImages.push(img);
+                fragment.appendChild(img);
+            }
+
+            container.appendChild(fragment);
+            loadingText.textContent = "✅ تم تحميل الصور.";
+            loading = false;
+        }
+
+        // إعادة محاولة تحميل الصور الفاشلة
+        setInterval(() => {
+            if(failedImages.length === 0) return;
+
+            const retryList = [...failedImages];
+            failedImages.length = 0;
+
+            for(const code of retryList) {
+                const img = document.createElement("img");
+                img.src = `https://credit.svnu.edu.eg/stuJCI?param0=stuImages.Images&param1=download&param2=${code}`;
+                img.alt = `Student ${code}`;
+                img.dataset.code = code;
+                img.onerror = () => {
+                    failedImages.push(code);
+                    img.remove();
+                };
+                allImages.push(img);
+                container.appendChild(img);
+            }
+        },100);
+
+        // بحث فوري
+        searchInput.addEventListener("input",() => {
+            const query = searchInput.value.trim();
+            container.innerHTML = "";
+
+            if(query === "") {
+                allImages.forEach(img => container.appendChild(img));
+            } else {
+                allImages.forEach(img => {
+                    if(img.dataset.code.includes(query)) {
+                        container.appendChild(img);
+                    }
+                });
+            }
+        });
+
+        // عند الضغط على زر عرض الصور
+        loadBtn.addEventListener("click",() => {
+            const startVal = parseInt(startInput.value);
+            const endVal = parseInt(endInput.value);
+
+            if(isNaN(startVal) || isNaN(endVal) || startVal > endVal) {
+                alert("⚠️ الرجاء إدخال مدى صحيح (من رقم إلى رقم).");
+                return;
+            }
+
+            loadBatch(startVal,endVal);
+        });
+    </script>
+
+</body>
+
+</html>
